@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Checkout Kata</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 30px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    #product-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .product {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s ease;
+    }
+
+    .product:hover {
+      transform: translateY(-4px);
+    }
+
+    .product-details {
+      flex: 1;
+      padding-right: 20px;
+    }
+
+    .product strong {
+      font-size: 1.1rem;
+      color: #222;
+    }
+
+    .product p {
+      margin: 6px 0;
+      font-size: 0.95rem;
+      color: #555;
+    }
+
+    .offer {
+      display: inline-block;
+      background-color: #ffe082;
+      color: #6d4c41;
+      padding: 4px 8px;
+      border-radius: 5px;
+      font-weight: bold;
+      margin-top: 6px;
+    }
+
+    .product button {
+      padding: 8px 14px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+      transition: background-color 0.3s ease;
+    }
+
+    .product button:hover {
+      background-color: #43a047;
+    }
+
+    .product img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-left: 20px;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+    }
+
+    #checkout-btn {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      padding: 12px 24px;
+      background: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transition: background 0.3s ease;
+    }
+
+    #checkout-btn:hover {
+      background: #1565c0;
+    }
+
+    .product img {
+      width: 10rem;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin: 10px 0;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1>Available Products</h1>
+  <div id="product-list"></div>
+
+  <button id="checkout-btn" onclick="goToCheckout()">
+    <span id="cart-count">Cart loading...</span> | Checkout
+  </button>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      fetchProducts();
+      getCartCount();
+    });
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") {
+        fetchProducts();
+        getCartCount();
+      }
+    });
+
+    function getCartCount() {
+      fetch("api/checkout/")
+        .then((res) => res.json())
+        .then((data) => {
+          const cartCount = data.cart.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          );
+          document.getElementById("cart-count").textContent = `Cart: ${cartCount}`;
+        });
+    }
+
+    function fetchProducts() {
+      fetch("/api/products/")
+        .then((res) => res.json())
+        .then((data) => {
+          const productList = document.getElementById("product-list");
+          productList.innerHTML = "";
+          data.products.forEach((product) => {
+            const div = document.createElement("div");
+            div.className = "product";
+            div.innerHTML = `
+              <div class="product-details">
+                <strong>${product.name}</strong>
+                <p>Price: ₹${product.unit_price}</p>
+                ${
+                  product.discount_qty
+                    ? `<p><span class="offer">Buy ${product.discount_qty} for ₹${product.discount_price}</span></p>`
+                    : ""
+                }
+                <button onclick="addToCart(${product.id})">Add to Cart</button>
+              </div>
+              <img src="${product.image}" alt="${product.name}">
+            `;
+            productList.appendChild(div);
+          });
+        });
+    }
+
+    function addToCart(productId) {
+      fetch("/api/add-to-cart/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": "{{ csrf_token }}",
+        },
+        body: JSON.stringify({ product_id: productId }),
+      }).then(() => {
+        let countText = document.getElementById("cart-count").textContent;
+        let currentCount = parseInt(countText.split(": ")[1]);
+        currentCount += 1;
+        document.getElementById("cart-count").textContent = `Cart: ${currentCount}`;
+      });
+    }
+
+    function goToCheckout() {
+      window.location.href = "/checkout";
+    }
+  </script>
+</body>
+</html>
